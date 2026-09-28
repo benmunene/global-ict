@@ -35,8 +35,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
 .login-sub { color: var(--text-muted); font-size: 0.82rem; margin-bottom: 30px; font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; }
 .login-box form { text-align: left; }
 .login-error { color: var(--danger); font-size: 0.85rem; margin-bottom: 10px; min-height: 20px; font-weight: 500; }
-.login-hint { margin-top: 22px; font-size: 0.78rem; color: var(--text-muted); }
-.login-hint code { background: #eaf2fa; padding: 3px 8px; border-radius: 6px; color: var(--primary-dark); font-size: 0.75rem; font-family: 'SF Mono', Monaco, Consolas, monospace; }
+.login-forgot { margin-top: 18px; font-size: 0.82rem; color: var(--text-muted); text-align: center; }
+.login-forgot a { color: var(--primary); text-decoration: none; font-weight: 600; }
+.login-forgot a:hover { text-decoration: underline; }
 .login-tagline { margin-top: 16px; font-style: italic; color: var(--text-muted); font-size: 0.85rem; font-weight: 500; }
 
 .branded-header { background: linear-gradient(120deg, #0a4d8c 0%, #063661 100%); color: white; padding: 14px 32px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; box-shadow: 0 4px 20px rgba(10,77,140,0.25); border-bottom: 3px solid transparent; border-image: linear-gradient(90deg, var(--red), var(--gold), var(--accent)) 1; position: sticky; top: 0; z-index: 50; }
@@ -257,11 +258,8 @@ textarea { resize: vertical; min-height: 72px; }
       <div id="loginError" class="login-error"></div>
       <button class="btn primary full" type="submit">🔐 Sign In</button>
     </form>
-    <p class="login-hint">Default: <code>superadmin / GlobalHub@2024</code></p>
-    <p style="margin-top:8px;font-size:0.78rem">
-      <a href="#" onclick="resetApp();return false" style="color:#c8102e;text-decoration:underline">
-        🔄 Reset all data (fresh install)
-      </a>
+    <p class="login-forgot">
+      <a href="#" onclick="forgotPassword();return false">Forgot password?</a>
     </p>
     <p class="login-tagline">Your Computing Universe</p>
   </div>
@@ -345,15 +343,11 @@ textarea { resize: vertical; min-height: 72px; }
 
 <script>
 /* ==========================================================
-   GLOBAL HUB COMPUTERS LTD — ICT MANAGEMENT SYSTEM v10
-   - Admin also has My Tasks tab
-   - Reports: Work Done & Recommendations first
-   - Auto-schedule: 4 months, auto-shift on collision
-   - Collision warnings on manual date edits
-   - Recovery URL: ?recover=1 to restore roles
+   GLOBAL HUB COMPUTERS LTD — ICT MANAGEMENT SYSTEM v11
+   Final version for Director presentation
    ========================================================== */
 
-const STORE_KEY = 'globalhub_ict_v10';
+const STORE_KEY = 'globalhub_ict_v11';
 let DB = {
   clients: [], sites: [], equipment: [], schedules: [], users: [],
   meta: { nextIds: { clients: 1, sites: 1, equipment: 1, schedules: 1, users: 1 } }
@@ -385,18 +379,42 @@ function checkRecoveryMode() {
     DB.users.forEach(u => {
       if (u.username === 'superadmin' && u.role !== 'super_admin') { u.role = 'super_admin'; fixed++; }
       else if (u.username === 'admin' && u.role !== 'admin') { u.role = 'admin'; fixed++; }
-      else if (u.username === 'peter' && u.role !== 'technician') { u.role = 'technician'; fixed++; }
+      else if (u.username === 'adam' && u.role !== 'technician') { u.role = 'technician'; fixed++; }
     });
-    if (DB.users.length === 0) {
-      // Fresh seed with default roles
-      seedIfEmpty();
-    }
     saveDB();
     setTimeout(() => {
-      alert(`🔐 Recovery mode executed.\n\n${fixed} user role(s) restored to defaults.\n\nYou can now log in as:\n• superadmin / GlobalHub@2024\n• admin / Admin@2024\n• peter / Tech@2024\n\nPress OK to continue to login.`);
+      alert(`🔐 Recovery mode executed.\n\n${fixed} user role(s) restored to defaults.\n\nYou can now log in with your admin accounts.\n\nPress OK to continue.`);
       window.history.replaceState({}, '', window.location.pathname);
     }, 500);
   }
+}
+
+/* ==================== FORGOT PASSWORD (passwords only) ==================== */
+function forgotPassword() {
+  const confirmed = confirm(
+    "🔑 Forgot Password\n\n" +
+    "This will RESET the passwords for these default accounts back to their factory settings:\n" +
+    "• superadmin\n" +
+    "• admin\n" +
+    "• adam\n\n" +
+    "⚠️ IMPORTANT:\n" +
+    "• Your DATA is SAFE — clients, sites, equipment, schedules, work history, reports — all preserved.\n" +
+    "• Any user accounts you created yourself will NOT be affected.\n\n" +
+    "Default passwords after reset:\n" +
+    "• superadmin: GlobalHub@2024\n" +
+    "• admin: Admin@2024\n" +
+    "• adam: Tech@2024\n\n" +
+    "Continue with password reset?"
+  );
+  if (!confirmed) return;
+  let resetCount = 0;
+  DB.users.forEach(u => {
+    if (u.username === 'superadmin') { u.password_hash = hash('GlobalHub@2024'); resetCount++; }
+    else if (u.username === 'admin') { u.password_hash = hash('Admin@2024'); resetCount++; }
+    else if (u.username === 'adam') { u.password_hash = hash('Tech@2024'); resetCount++; }
+  });
+  saveDB();
+  alert(`✅ Password reset complete.\n\n${resetCount} account(s) reset to default passwords.\n\nYour data remains untouched.\n\nYou can now log in with:\n• superadmin / GlobalHub@2024\n• admin / Admin@2024\n• adam / Tech@2024\n\nPlease change your password after logging in.`);
 }
 
 /* ==================== AUTH ==================== */
@@ -426,12 +444,6 @@ function logout() {
   document.getElementById('loginScreen').classList.remove('hidden');
   document.getElementById('loginUser').value = '';
   document.getElementById('loginPass').value = '';
-}
-function resetApp() {
-  if (!confirm('⚠️ This will DELETE ALL data and restore the default 2026 service schedule. Continue?')) return;
-  localStorage.removeItem(STORE_KEY);
-  sessionStorage.removeItem('ghc_session');
-  location.reload();
 }
 function changePassword() {
   const oldP = prompt('Enter current password:');
@@ -480,7 +492,7 @@ function seedIfEmpty() {
   if (DB.users.length > 0) return;
   DB.users.push({ id: nextId('users'), username: 'superadmin', password_hash: hash('GlobalHub@2024'), full_name: 'System Owner', email: 'sales@globalhubcomputers.com', phone: '0725140150', role: 'super_admin', client_id: null, specialization: null, active: true });
   DB.users.push({ id: nextId('users'), username: 'admin', password_hash: hash('Admin@2024'), full_name: 'ICT Administrator', email: 'sales@globalhubcomputers.com', phone: '0725140150', role: 'admin', client_id: null, specialization: null, active: true });
-  DB.users.push({ id: nextId('users'), username: 'peter', password_hash: hash('Tech@2024'), full_name: 'Peter Kamau', email: 'sales@globalhubcomputers.com', phone: '0725140150', role: 'technician', client_id: null, specialization: 'Network Infrastructure', active: true });
+  DB.users.push({ id: nextId('users'), username: 'adam', password_hash: hash('Tech@2024'), full_name: 'Adam Hussein', email: 'sales@globalhubcomputers.com', phone: '0725140150', role: 'technician', client_id: null, specialization: 'Technician', active: true });
 
   const SCHEDULE_2026 = [
     { client: 'Whitehorse Carriers', services: ['2026-02-07', '2026-06-06'] },
@@ -599,10 +611,6 @@ function saveAsPDF(title) {
 function printReport(title) { saveAsPDF(title); }
 
 /* ==================== COLLISION DETECTION ==================== */
-/**
- * Find the next free date for the technician starting from given date.
- * Skips dates that already have a service for the same technician or any service if no tech specified.
- */
 function findNextFreeDate(startDate, technicianId, excludeTaskId = null) {
   let current = new Date(startDate);
   let attempts = 0;
@@ -619,13 +627,8 @@ function findNextFreeDate(startDate, technicianId, excludeTaskId = null) {
     current.setDate(current.getDate() + 1);
     attempts++;
   }
-  return startDate; // fallback
+  return startDate;
 }
-
-/**
- * Detect if a task date collides with any other scheduled task on the same day.
- * Returns array of conflicting tasks (excluding the one being edited).
- */
 function findCollisions(taskId, dateStr) {
   return DB.schedules.filter(s =>
     s.id !== taskId &&
@@ -649,23 +652,17 @@ function calcNextDate(dateStr, recurrence) {
   }
   return d.toISOString().split('T')[0];
 }
-
 function autoScheduleNext(completedTask) {
   const rec = completedTask.recurrence || 'One-time';
   if (rec === 'One-time') return null;
   const alreadyExists = DB.schedules.some(s => s.parent_task_id === completedTask.id);
   if (alreadyExists) return null;
-
-  // Base from completed date (real-world 4 months from when work was done)
   const baseDate = completedTask.completed_at ? completedTask.completed_at.split('T')[0] : completedTask.scheduled_date;
   let nextDate = calcNextDate(baseDate, rec);
   if (!nextDate) return null;
-
-  // ===== COLLISION-AWARE: shift +1 day until no conflict =====
   const shiftedDate = findNextFreeDate(nextDate, completedTask.technician_id, null);
   const wasShifted = shiftedDate !== nextDate;
   nextDate = shiftedDate;
-
   const cleanTask = completedTask.task.replace(/\s*\(Next.*?\)\s*$/, '').trim();
   const newTask = {
     id: nextId('schedules'), client_id: completedTask.client_id, equipment_id: completedTask.equipment_id,
@@ -740,7 +737,7 @@ function renderDashboard() {
 /* ==================== NEXT SERVICE ==================== */
 function renderNextService() {
   const el = document.getElementById('view-nextservice');
-  const technicians = DB.users.filter(u => u.role === 'technician');
+  const technicians = DB.users.filter(u => ['technician','admin','super_admin'].includes(u.role));
   el.innerHTML = `
     <div class="page-title">
       <h2>🔮 Next Scheduled Service</h2>
@@ -866,7 +863,6 @@ function renderMyTasks() {
   const active = myTasks.filter(t => t.status !== 'Completed' && t.status !== 'Cancelled');
   const upcoming = active.sort((a,b) => new Date(a.scheduled_date) - new Date(b.scheduled_date));
   const completed = myTasks.filter(t => t.status === 'Completed');
-
   el.innerHTML = `
     <div class="page-title">
       <h2>🔧 My Tasks — ${esc(currentUser.full_name)}</h2>
@@ -886,7 +882,6 @@ function renderMyTasks() {
       <div class="stat-card"><div class="num">${myTasks.reduce((s,t)=>s+(t.hours_spent||0),0)} h</div><div class="label">Hours Logged</div></div>
       <div class="stat-card"><div class="num">KES ${myTasks.reduce((s,t)=>s+(t.labor_cost||0),0).toLocaleString()}</div><div class="label">Labor Value</div></div>
     </div>
-
     <div class="card"><h3>📅 My Upcoming Tasks</h3>
       ${upcoming.length ? `<table><thead><tr>
         <th>Date</th><th>Client</th><th>Site</th><th>Equipment</th><th>Task</th>
@@ -905,7 +900,6 @@ function renderMyTasks() {
       </tr>`;}).join('')}</tbody></table>`
       : '<div class="empty-state"><div class="icon">✅</div><p>No tasks assigned to you yet.</p></div>'}
     </div>
-
     <div class="card"><h3>✅ My Completed Tasks</h3>
       ${completed.length ? `<table><thead><tr>
         <th>Completed</th><th>Client</th><th>Task</th><th>Work Done</th><th>Hours</th><th>Cost</th>
@@ -1107,9 +1101,6 @@ function renderUsers() {
           <button class="btn small secondary" onclick="openUserModal(${u.id})">Edit</button>
           ${currentUser.role === 'super_admin' && u.id !== currentUser.id ? `<button class="btn small danger" onclick="deleteUser(${u.id})">Delete</button>` : ''}
         </td></tr>`).join('')}</tbody></table>
-      <div class="alert-banner" style="margin-top:14px">
-        ⚠️ <strong>Warning:</strong> Don't change your own role while logged in — you'll lock yourself out. Use the <code>?recover=1</code> URL to fix it if that happens.
-      </div>
     </div>`;
 }
 
@@ -1256,7 +1247,6 @@ function selectReportClient(clientId) {
   renderClientReportBody();
 }
 
-/* ==================== SINGLE SERVICE REPORT (Work Done First) ==================== */
 function renderSingleServiceReport(serviceId) {
   const body = document.getElementById('clientReportBody');
   const s = DB.schedules.find(x => x.id === serviceId);
@@ -1270,7 +1260,6 @@ function renderSingleServiceReport(serviceId) {
   const grandTotal = totalLabor + totalParts;
   const hasSiteNotes = s.site_report_notes && s.site_report_notes.trim();
   const hasChecklist = (s.checklist_done && s.checklist_done.length) || s.other_work;
-
   body.innerHTML = `
     <div class="card" style="background:linear-gradient(135deg,#f8fbff,#eef6fd);border-left:5px solid var(--primary)">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
@@ -1285,16 +1274,13 @@ function renderSingleServiceReport(serviceId) {
         </div>
       </div>
     </div>
-
     ${hasSiteNotes ? `
     <div class="card" style="border-left:5px solid var(--success);background:linear-gradient(135deg,#f0fdf4,#dcfce7)">
       <h3 style="color:#166534">📋 Site Report — Tasks & Activities Performed</h3>
-      <p style="font-size:0.85rem;color:#166534;margin-bottom:12px">Detailed breakdown of all work done during this service visit:</p>
       <div style="background:white;padding:18px;border-radius:8px;border:1px solid #bbf7d0;border-left:3px solid var(--success)">
         <div style="font-size:0.95rem;line-height:2;white-space:pre-wrap;color:#243b53">${esc(s.site_report_notes)}</div>
       </div>
     </div>` : ''}
-
     ${hasChecklist ? `
     <div class="card" style="border-left:5px solid var(--success)">
       <h3 style="color:#166534">✅ Checklist Items Completed</h3>
@@ -1304,70 +1290,45 @@ function renderSingleServiceReport(serviceId) {
         </div>
         ${s.other_work ? `<div style="margin-top:14px;padding-top:14px;border-top:1px dashed #bbf7d0"><div style="font-size:0.78rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">➕ Additional Work</div><div style="font-size:0.92rem;line-height:1.8;white-space:pre-wrap">${esc(s.other_work)}</div></div>` : ''}
       </div>
-      <div style="margin-top:12px;font-size:0.85rem;color:#166534;text-align:right;font-weight:600">
-        ✅ <strong>${(s.checklist_done || []).length}</strong> checklist item(s) completed
-      </div>
+      <div style="margin-top:12px;font-size:0.85rem;color:#166534;text-align:right;font-weight:600">✅ <strong>${(s.checklist_done || []).length}</strong> checklist item(s) completed</div>
     </div>` : ''}
-
     ${s.recommendations ? `
     <div class="card" style="background:linear-gradient(135deg,#fffbeb,#fef3c7);border-left:5px solid var(--gold);border:2px solid #fcd34d">
       <h3 style="color:#92400e">💡 Recommendations for Client</h3>
-      <p style="font-size:0.85rem;color:#78350f;margin-bottom:12px">Based on this service visit, the following actions are recommended for future improvements:</p>
       <div style="background:white;padding:18px;border-radius:8px;border-left:4px solid var(--gold)">
         <div style="font-size:0.95rem;line-height:2;white-space:pre-wrap;color:#243b53">${esc(s.recommendations)}</div>
       </div>
-      <p style="margin-top:14px;font-size:0.85rem;color:#78350f;font-style:italic;text-align:center;font-weight:500">
-        📞 Please contact Global Hub Computers Ltd (0725140150) to discuss implementation and cost estimates.
-      </p>
+      <p style="margin-top:14px;font-size:0.85rem;color:#78350f;font-style:italic;text-align:center;font-weight:500">📞 Please contact Global Hub Computers Ltd (0725140150) to discuss implementation and cost estimates.</p>
     </div>` : ''}
-
     ${s.resolution_notes ? `
-    <div class="card">
-      <h3>📝 Resolution Notes</h3>
-      <div style="background:#f8fbff;padding:14px;border-radius:8px;font-size:0.9rem;line-height:1.7;white-space:pre-wrap;border-left:3px solid var(--primary)">${esc(s.resolution_notes)}</div>
-    </div>` : ''}
-
+    <div class="card"><h3>📝 Resolution Notes</h3><div style="background:#f8fbff;padding:14px;border-radius:8px;font-size:0.9rem;line-height:1.7;white-space:pre-wrap;border-left:3px solid var(--primary)">${esc(s.resolution_notes)}</div></div>` : ''}
     <div class="card" style="background:linear-gradient(135deg,#f8fbff,#eef6fd);border-left:4px solid var(--primary)">
       <h3>📌 Service Details</h3>
-      <table style="background:white">
-        <tbody>
-          <tr><td style="width:200px"><strong>Client</strong></td><td>${esc(client.name)}</td></tr>
-          <tr><td><strong>Contact</strong></td><td>${esc(client.contact || '—')}${client.phone ? ' · ' + esc(client.phone) : ''}</td></tr>
-          <tr><td><strong>Site</strong></td><td>${site.is_head_office ? '⭐ ' : '📍 '}${esc(site.name || '—')}${site.address ? ' — ' + esc(site.address) : ''}</td></tr>
-          <tr><td><strong>Equipment</strong></td><td>${esc(equipLabel(s.equipment_id))}${eq.model ? ' (' + esc(eq.model) + ')' : ''}</td></tr>
-          <tr><td><strong>Task</strong></td><td>${esc(s.task)}</td></tr>
-          <tr><td><strong>Scheduled Date</strong></td><td>${fmtDate(s.scheduled_date)}</td></tr>
-          <tr><td><strong>Completed On</strong></td><td><strong style="color:var(--success)">${fmtDate(s.completed_at)}</strong></td></tr>
-          <tr><td><strong>Technician</strong></td><td><strong>${esc(tech.full_name || 'Unassigned')}</strong></td></tr>
-          <tr><td><strong>Duration</strong></td><td>${s.hours_spent || 0} hours</td></tr>
-        </tbody>
-      </table>
+      <table style="background:white"><tbody>
+        <tr><td style="width:200px"><strong>Client</strong></td><td>${esc(client.name)}</td></tr>
+        <tr><td><strong>Contact</strong></td><td>${esc(client.contact || '—')}${client.phone ? ' · ' + esc(client.phone) : ''}</td></tr>
+        <tr><td><strong>Site</strong></td><td>${site.is_head_office ? '⭐ ' : '📍 '}${esc(site.name || '—')}${site.address ? ' — ' + esc(site.address) : ''}</td></tr>
+        <tr><td><strong>Equipment</strong></td><td>${esc(equipLabel(s.equipment_id))}${eq.model ? ' (' + esc(eq.model) + ')' : ''}</td></tr>
+        <tr><td><strong>Task</strong></td><td>${esc(s.task)}</td></tr>
+        <tr><td><strong>Scheduled Date</strong></td><td>${fmtDate(s.scheduled_date)}</td></tr>
+        <tr><td><strong>Completed On</strong></td><td><strong style="color:var(--success)">${fmtDate(s.completed_at)}</strong></td></tr>
+        <tr><td><strong>Technician</strong></td><td><strong>${esc(tech.full_name || 'Unassigned')}</strong></td></tr>
+        <tr><td><strong>Duration</strong></td><td>${s.hours_spent || 0} hours</td></tr>
+      </tbody></table>
     </div>
-
-    ${s.parts_used ? `
-    <div class="card"><h3>🔧 Parts Used</h3><div style="background:#f8fbff;padding:14px;border-radius:8px;font-size:0.9rem;line-height:1.7;white-space:pre-wrap">${esc(s.parts_used)}</div></div>` : ''}
-
+    ${s.parts_used ? `<div class="card"><h3>🔧 Parts Used</h3><div style="background:#f8fbff;padding:14px;border-radius:8px;font-size:0.9rem;line-height:1.7;white-space:pre-wrap">${esc(s.parts_used)}</div></div>` : ''}
     <div class="card" style="background:linear-gradient(135deg,#f1f6fc,#e8f0f9);border-left:4px solid var(--primary)">
       <h3>💰 Cost Summary</h3>
-      <table style="background:white">
-        <tbody>
-          <tr><td><strong>Labor Cost</strong></td><td style="text-align:right">KES ${totalLabor.toLocaleString()}</td></tr>
-          <tr><td><strong>Parts Cost</strong></td><td style="text-align:right">KES ${totalParts.toLocaleString()}</td></tr>
-          <tr style="background:#fff8e1"><td><strong>GRAND TOTAL</strong></td><td style="text-align:right;font-size:1.1rem"><strong>KES ${grandTotal.toLocaleString()}</strong></td></tr>
-        </tbody>
-      </table>
+      <table style="background:white"><tbody>
+        <tr><td><strong>Labor Cost</strong></td><td style="text-align:right">KES ${totalLabor.toLocaleString()}</td></tr>
+        <tr><td><strong>Parts Cost</strong></td><td style="text-align:right">KES ${totalParts.toLocaleString()}</td></tr>
+        <tr style="background:#fff8e1"><td><strong>GRAND TOTAL</strong></td><td style="text-align:right;font-size:1.1rem"><strong>KES ${grandTotal.toLocaleString()}</strong></td></tr>
+      </tbody></table>
     </div>
-
     <div class="card" style="border:2px solid var(--border)">
       <div style="display:flex;justify-content:space-between;margin-top:20px;gap:20px;flex-wrap:wrap;font-size:0.82rem;color:#64748b">
-        <div>
-          <div style="border-top:1px solid #333;width:220px;margin-top:40px"></div>
-          <div style="margin-top:8px"><strong>Prepared by</strong> — Global Hub Computers Ltd<br>${esc(tech.full_name || '')}</div>
-        </div>
-        <div>
-          <div style="border-top:1px solid #333;width:220px;margin-top:40px"></div>
-          <div style="margin-top:8px"><strong>Received by</strong> — ${esc(client.name)}<br>Name &amp; Signature / Date</div>
-        </div>
+        <div><div style="border-top:1px solid #333;width:220px;margin-top:40px"></div><div style="margin-top:8px"><strong>Prepared by</strong> — Global Hub Computers Ltd<br>${esc(tech.full_name || '')}</div></div>
+        <div><div style="border-top:1px solid #333;width:220px;margin-top:40px"></div><div style="margin-top:8px"><strong>Received by</strong> — ${esc(client.name)}<br>Name &amp; Signature / Date</div></div>
       </div>
     </div>
   `;
@@ -1429,20 +1390,15 @@ function renderClientReportBody() {
       const site = siteId === 'unsited' ? { name: 'No site assigned' } : siteById(siteId);
       return `<div class="card">
         <h3>${site.is_head_office ? '⭐' : '📍'} ${esc(site.name)}</h3>
-        <table>
-          <thead><tr>
+        <table><thead><tr>
             <th>Date</th><th>Task & Work Done</th><th>Equipment</th>
             <th>Technician</th><th>Hours</th><th>Cost</th><th>Status</th>
-          </tr></thead>
-          <tbody>
+          </tr></thead><tbody>
             ${siteTasks.map(t => {
               const hasDetails = (t.checklist_done && t.checklist_done.length) || t.other_work || t.recommendations || t.site_report_notes;
               return `<tr>
                 <td style="white-space:nowrap;vertical-align:top">${fmtDate(t.scheduled_date)}${t.completed_at ? `<br><small style="color:#64748b">done ${fmtDate(t.completed_at)}</small>` : ''}</td>
-                <td style="vertical-align:top">
-                  <strong>${esc(t.task)}</strong>
-                  ${t.site_report_notes ? `<br><small style="color:#166534">📋 ${esc(t.site_report_notes.split('\n')[0].slice(0,80))}${t.site_report_notes.length > 80 ? '...' : ''}</small>` : ''}
-                </td>
+                <td style="vertical-align:top"><strong>${esc(t.task)}</strong>${t.site_report_notes ? `<br><small style="color:#166534">📋 ${esc(t.site_report_notes.split('\n')[0].slice(0,80))}${t.site_report_notes.length > 80 ? '...' : ''}</small>` : ''}</td>
                 <td style="vertical-align:top">${esc(equipLabel(t.equipment_id))}</td>
                 <td style="vertical-align:top">${esc(techName(t.technician_id))}</td>
                 <td style="vertical-align:top">${t.hours_spent || 0}</td>
@@ -1459,20 +1415,14 @@ function renderClientReportBody() {
                 </td>
               </tr>` : ''}
             `}).join('')}
-          </tbody>
-        </table>
+          </tbody></table>
       </div>`;
     }).join('')}
     ${recTasks.length ? `
     <div class="card" style="background:linear-gradient(135deg,#fffbeb,#fef3c7);border-left:4px solid var(--gold)">
       <h3>💡 Recommendations Summary</h3>
       <div style="background:white;padding:16px;border-radius:8px">
-        ${recTasks.map(t => `
-          <div style="padding:12px 0;border-bottom:1px dashed #fcd34d">
-            <div style="font-size:0.82rem;color:#92400e;font-weight:700;margin-bottom:6px">📅 ${fmtDate(t.scheduled_date)} — ${esc(equipLabel(t.equipment_id))}</div>
-            <div style="font-size:0.88rem;color:#243b53;white-space:pre-wrap;line-height:1.7">${esc(t.recommendations)}</div>
-          </div>
-        `).join('')}
+        ${recTasks.map(t => `<div style="padding:12px 0;border-bottom:1px dashed #fcd34d"><div style="font-size:0.82rem;color:#92400e;font-weight:700;margin-bottom:6px">📅 ${fmtDate(t.scheduled_date)} — ${esc(equipLabel(t.equipment_id))}</div><div style="font-size:0.88rem;color:#243b53;white-space:pre-wrap;line-height:1.7">${esc(t.recommendations)}</div></div>`).join('')}
       </div>
     </div>` : ''}
     ${tasks.length ? `
@@ -1819,7 +1769,7 @@ function openScheduleModal(id) {
       <div class="form-group"><label>Scheduled Date *</label><input type="date" id="sDate" value="${s.scheduled_date||new Date().toISOString().split('T')[0]}" onchange="checkScheduleCollision()"></div>
       <div class="form-group"><label>Technician</label><select id="sTech" onchange="checkScheduleCollision()">
         <option value="">-- Unassigned --</option>
-        ${techs.map(t => `<option value="${t.id}" ${s.technician_id===t.id?'selected':''}>${esc(t.full_name)} (${t.role.replace('_',' ')})</option>`).join('')}
+        ${techs.map(t => `<option value="${t.id}" ${s.technician_id===t.id?'selected':''}>${esc(t.full_name)}</option>`).join('')}
       </select></div>
     </div>
     <div id="collisionWarning"></div>
@@ -1850,7 +1800,6 @@ function openScheduleModal(id) {
   loadEquipOptions(s.equipment_id);
   setTimeout(() => checkScheduleCollision(), 200);
 }
-
 function checkScheduleCollision() {
   const editId = document.getElementById('modalRoot')?.querySelector('[onclick*="saveSchedule"]')?.getAttribute('onclick')?.match(/saveSchedule\((\d+|null)\)/)?.[1];
   const dateVal = document.getElementById('sDate')?.value;
@@ -1861,16 +1810,13 @@ function checkScheduleCollision() {
   if (collisions.length) {
     warningEl.innerHTML = `<div class="collision-warning">
       ⚠️ <strong>Schedule collision:</strong> ${collisions.length} other task(s) already scheduled on <strong>${fmtDate(dateVal)}</strong>:
-      <ul style="margin:8px 0 0 20px">
-        ${collisions.map(c => `<li>${esc(clientName(c.client_id))} — ${esc(c.task)} (${esc(techName(c.technician_id))})</li>`).join('')}
-      </ul>
+      <ul style="margin:8px 0 0 20px">${collisions.map(c => `<li>${esc(clientName(c.client_id))} — ${esc(c.task)} (${esc(techName(c.technician_id))})</li>`).join('')}</ul>
       <div style="margin-top:8px">You can still save, or change the date to avoid conflict.</div>
     </div>`;
   } else {
     warningEl.innerHTML = '';
   }
 }
-
 function loadEquipOptions(selectedId) {
   const clientId = +document.getElementById('sClient').value;
   const siteSel = document.getElementById('sSite');
@@ -1908,7 +1854,6 @@ function saveSchedule(id) {
     notes: document.getElementById('sNotes').value
   };
   if (!data.client_id || !data.equipment_id || !data.task || !data.scheduled_date) return alert('Fill all required fields');
-  // Warn if collision
   const collisions = findCollisions(id || null, data.scheduled_date);
   if (collisions.length) {
     if (!confirm(`⚠️ Schedule Collision Detected\n\n${collisions.length} other task(s) already scheduled on ${fmtDate(data.scheduled_date)}:\n\n${collisions.map(c => '• ' + clientName(c.client_id) + ' — ' + c.task).join('\n')}\n\nSave anyway?`)) return;
@@ -1953,7 +1898,7 @@ function openUserModal(id) {
   const roleOptions = currentUser.role === 'super_admin' ? ['admin','technician','client','super_admin'] : ['technician','client'];
   showModal(`
     <h3>${id ? 'Edit' : 'Add'} User</h3>
-    ${id === currentUser.id ? '<div class="alert-banner danger">⚠️ You are editing your OWN account. Changing your role will lock you out. Use ?recover=1 to fix if it happens.</div>' : ''}
+    ${id === currentUser.id ? '<div class="alert-banner danger">⚠️ You are editing your OWN account. Changing your role will lock you out.</div>' : ''}
     <div class="form-row">
       <div class="form-group"><label>Full Name *</label><input id="uName" value="${esc(u.full_name||'')}"></div>
       <div class="form-group"><label>Username *</label><input id="uUser" value="${esc(u.username||'')}" ${id?'disabled':''}></div>
@@ -1969,7 +1914,7 @@ function openUserModal(id) {
       </select></div>
       <div class="form-group" id="specField"><label>Specialization</label><select id="uSpec">
         <option value="">-- None --</option>
-        ${['Network Infrastructure','Server Administration','Hardware Repair','Security Systems','Software Support','General ICT'].map(s => `<option ${u.specialization===s?'selected':''}>${s}</option>`).join('')}
+        ${['Technician','Network Infrastructure','Server Administration','Hardware Repair','Security Systems','Software Support','General ICT'].map(s => `<option ${u.specialization===s?'selected':''}>${s}</option>`).join('')}
       </select></div>
     </div>
     <div class="form-group" id="clientField"><label>Link to Client</label><select id="uClient">
@@ -2019,10 +1964,7 @@ function saveUser(id) {
     data.created_at = new Date().toISOString(); DB.users.push(data);
   }
   saveDB(); closeModal(); refresh();
-  // If user edited themselves and role changed, force a refresh of tabs
-  if (id === currentUser.id) {
-    buildTabs();
-  }
+  if (id === currentUser.id) buildTabs();
 }
 function deleteUser(id) {
   if (!confirm('Delete this user?')) return;
@@ -2053,7 +1995,6 @@ function openWorkModal(id) {
   };
   const checklistItems = CHECKLIST_LIBRARY[eqType] || CHECKLIST_LIBRARY['Other'];
   const previouslyChecked = s.checklist_done || [];
-
   showModal(`
     <h3>Update Task #${s.id}</h3>
     <div style="background:#eaf2fa;padding:12px;border-radius:8px;margin-bottom:15px;font-size:0.85rem">
@@ -2221,4 +2162,4 @@ if (sessId) {
 }
 </script>
 </body>
-  </html>
+</html>
